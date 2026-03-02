@@ -62,7 +62,7 @@ export default function Providers({ children }: { children: ReactNode }) {
   return (
     <MantineProvider theme={theme}>
       <ModalsProvider>
-        <Notifications position="top-right" />
+        <Notifications position="bottom-right" />
         {children}
       </ModalsProvider>
     </MantineProvider>

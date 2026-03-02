@@ -142,7 +142,7 @@ function InlineEdit({ value, onSave }: InlineEditProps) {
   );
 }
 
-export default function PropertiesPanel() {
+export default function PropertiesPanel({ inDrawer = false }: { inDrawer?: boolean }) {
   const { state, dispatch } = useSeatMap();
   const { selectedItems, seatMap } = state;
   const [labelModalOpen, setLabelModalOpen] = useState(false);
@@ -156,7 +156,7 @@ export default function PropertiesPanel() {
       <Stack
         p="md"
         gap="md"
-        style={{
+        style={inDrawer ? { background: 'white', minHeight: '100%' } : {
           width: 260,
           borderLeft: '1px solid var(--mantine-color-gray-3)',
           background: 'white',
@@ -233,7 +233,7 @@ export default function PropertiesPanel() {
       <Stack
         p="md"
         gap="md"
-        style={{
+        style={inDrawer ? { background: 'white', minHeight: '100%' } : {
           width: 260,
           borderLeft: '1px solid var(--mantine-color-gray-3)',
           background: 'white',

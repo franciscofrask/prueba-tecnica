@@ -13,13 +13,59 @@ interface Props {
 }
 
 const SEAT_SIZE = 16;
+// Distancia del borde de la mesa al centro del asiento
+const SEAT_OFFSET = 15;
 
-function seatPosition(index: number, total: number, radius: number): { x: number; y: number } {
+/** Distribución circular para mesas redondas */
+function circularSeatPos(index: number, total: number, radius: number): { x: number; y: number } {
   const angle = (index / total) * Math.PI * 2 - Math.PI / 2;
   return {
     x: Math.cos(angle) * radius,
     y: Math.sin(angle) * radius,
   };
+}
+
+/**
+ * Pre-calcula las posiciones de todos los asientos alrededor de un rectángulo.
+ * Reparte asientos proporcionales a cada lado (top/bottom reciben más en mesas rectangulares)
+ * y los centra dentro de cada lado.
+ */
+function rectSeatPositions(
+  total: number,
+  tableW: number,
+  tableH: number
+): { x: number; y: number }[] {
+  const halfW = tableW / 2;
+  const halfH = tableH / 2;
+  const perimeter = 2 * (tableW + tableH);
+
+  // Distribute seats proportionally to side lengths
+  let top    = Math.round(total * tableW / perimeter);
+  let right  = Math.round(total * tableH / perimeter);
+  let bottom = Math.round(total * tableW / perimeter);
+  let left   = total - top - right - bottom;
+  // Fix negative left (from rounding) taking from the longest side
+  if (left < 0) { bottom += left; left = 0; }
+
+  const positions: { x: number; y: number }[] = [];
+
+  const place = (count: number, fn: (t: number) => { x: number; y: number }) => {
+    for (let i = 0; i < count; i++) {
+      // t va de 0 a 1, centrado: (i + 0.5) / count
+      positions.push(fn((i + 0.5) / count));
+    }
+  };
+
+  // Top (izquierda → derecha)
+  place(top,    (t) => ({ x: -halfW + t * tableW,  y: -halfH - SEAT_OFFSET }));
+  // Right (arriba → abajo)
+  place(right,  (t) => ({ x: halfW + SEAT_OFFSET,  y: -halfH + t * tableH  }));
+  // Bottom (derecha → izquierda, para sentido horario)
+  place(bottom, (t) => ({ x: halfW - t * tableW,   y: halfH  + SEAT_OFFSET }));
+  // Left (abajo → arriba)
+  place(left,   (t) => ({ x: -halfW - SEAT_OFFSET, y: halfH  - t * tableH  }));
+
+  return positions;
 }
 
 export default function TableComponent({ table, isSelected, onClick, onDragEnd, onDragMove }: Props) {
@@ -28,10 +74,20 @@ export default function TableComponent({ table, isSelected, onClick, onDragEnd, 
   const stroke = isSelected ? baseColor : `${baseColor}88`;
 
   const isCircle = table.shape === 'circle';
-  const tableW = table.shape === 'rectangle' ? 120 : 80;
-  const tableH = table.shape === 'rectangle' ? 60 : 80;
-  const tableRadius = isCircle ? 40 : table.shape === 'square' ? 8 : 6;
-  const seatRadius = isCircle ? 50 : 48;
+  const isSquare = table.shape === 'square';
+  const tableW = isCircle ? 80 : isSquare ? 80 : 120;
+  const tableH = isCircle ? 80 : isSquare ? 80 : 60;
+  const tableRadius = isCircle ? 40 : isSquare ? 8 : 6;
+  // Radio para asientos circulares = radio de círculo + offset
+  const circleRadius = 40 + SEAT_OFFSET;
+  // Dimensiones totales del bounding box (mesa + asientos) para drag
+  const boundW = tableW + SEAT_OFFSET * 2 + SEAT_SIZE;
+  const boundH = tableH + SEAT_OFFSET * 2 + SEAT_SIZE;
+
+  // Pre-calcular posiciones de todos los asientos
+  const seatPositions = isCircle
+    ? table.seats.map((_, i) => circularSeatPos(i, table.seats.length, circleRadius))
+    : rectSeatPositions(table.seats.length, tableW, tableH);
 
   return (
     <Group
@@ -40,16 +96,16 @@ export default function TableComponent({ table, isSelected, onClick, onDragEnd, 
       rotation={table.rotation ?? 0}
       draggable
       onClick={(e) => onClick(e, { id: table.id, type: 'table' })}
-      onDragMove={(e) => onDragMove?.(table.id, e.target.x(), e.target.y(), 130, 130)}
+      onDragMove={(e) => onDragMove?.(table.id, e.target.x(), e.target.y(), boundW, boundH)}
       onDragEnd={(e) => onDragEnd(table.id, e.target.x(), e.target.y())}
     >
       {/* Selección */}
       {isSelected && (
         <Rect
-          x={-(tableW / 2) - 20}
-          y={-(tableH / 2) - 20}
-          width={tableW + 40}
-          height={tableH + 40}
+          x={-boundW / 2}
+          y={-boundH / 2}
+          width={boundW}
+          height={boundH}
           stroke="#3b82f6"
           strokeWidth={1.5}
           dash={[4, 4]}
@@ -97,7 +153,7 @@ export default function TableComponent({ table, isSelected, onClick, onDragEnd, 
 
       {/* Asientos alrededor */}
       {table.seats.map((seat, i) => {
-        const pos = seatPosition(i, table.seats.length, seatRadius);
+        const pos = seatPositions[i];
         const isDisabled = seat.status === 'disabled';
         const seatFill = isDisabled ? '#e5e7eb' : 'white';
         const seatStroke = isDisabled ? '#9ca3af' : baseColor;

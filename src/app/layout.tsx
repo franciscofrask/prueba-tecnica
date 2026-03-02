@@ -9,7 +9,7 @@ import Providers from "./providers";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "SeatMapBuilder",
+  title: "Mapa de Asientos",
   description: "Editor visual interactivo de mapas de asientos",
 };
 
@@ -23,7 +23,7 @@ export default function RootLayout({
       <head>
         <ColorSchemeScript />
       </head>
-      <body className={inter.className}>
+      <body className={inter.className} suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -128,36 +128,68 @@ export default function CreateTableModal({ opened, onClose }: Props) {
 
           {/* Preview SVG */}
           {(() => {
-            const W = 260, H = 140;
+            const W = 260, H = 160;
             const cx = W / 2, cy = H / 2;
-            const tableW = shape === 'rectangle' ? 100 : 60;
-            const tableH = shape === 'rectangle' ? 50 : 60;
-            const tableR = 30;
-            const seatR = 8;
-            const seatCount2 = Math.min(count, 12);
-            const orbitR = shape === 'rectangle' ? 60 : 50;
-            const seats = Array.from({ length: seatCount2 }, (_, i) => {
-              const a = ((2 * Math.PI) / seatCount2) * i - Math.PI / 2;
-              return { x: cx + orbitR * Math.cos(a), y: cy + orbitR * Math.sin(a) };
-            });
+            const isCircle  = shape === 'circle';
+            const isSquare  = shape === 'square';
+            const tableW = isCircle ? 64 : isSquare ? 70 : 110;
+            const tableH = isCircle ? 64 : isSquare ? 70 :  54;
+            const seatSz = 14;
+            const seatOff = 14;
+            const n = Math.min(count, 16);
+
+            // Posiciones de asientos
+            const seats: { x: number; y: number }[] = [];
+            if (isCircle) {
+              const r = tableW / 2 + seatOff;
+              for (let i = 0; i < n; i++) {
+                const a = (i / n) * Math.PI * 2 - Math.PI / 2;
+                seats.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+              }
+            } else {
+              // Distribuir proporcional a cada lado
+              const perimeter = 2 * (tableW + tableH);
+              let top    = Math.round(n * tableW / perimeter);
+              let right  = Math.round(n * tableH / perimeter);
+              let bottom = Math.round(n * tableW / perimeter);
+              let left   = n - top - right - bottom;
+              if (left < 0) { bottom += left; left = 0; }
+
+              const place = (cnt: number, fn: (t: number) => { x: number; y: number }) => {
+                for (let i = 0; i < cnt; i++) seats.push(fn((i + 0.5) / cnt));
+              };
+              const hw = tableW / 2, hh = tableH / 2;
+              place(top,    (t) => ({ x: cx - hw + t * tableW,   y: cy - hh - seatOff }));
+              place(right,  (t) => ({ x: cx + hw + seatOff,      y: cy - hh + t * tableH }));
+              place(bottom, (t) => ({ x: cx + hw - t * tableW,   y: cy + hh + seatOff }));
+              place(left,   (t) => ({ x: cx - hw - seatOff,      y: cy + hh - t * tableH }));
+            }
+
             return (
               <div style={{ background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
                 <svg width={W} height={H} style={{ display: 'block', margin: '0 auto' }}>
                   {/* Asientos */}
                   {seats.map((s, i) => (
-                    <circle key={i} cx={s.x} cy={s.y} r={seatR} fill="white" stroke={color} strokeWidth={1.5} />
+                    <rect
+                      key={i}
+                      x={s.x - seatSz / 2} y={s.y - seatSz / 2}
+                      width={seatSz} height={seatSz}
+                      rx={isCircle ? seatSz / 2 : 3}
+                      fill="white" stroke={color} strokeWidth={1.5}
+                    />
                   ))}
                   {/* Mesa */}
-                  {shape === 'circle' && (
-                    <circle cx={cx} cy={cy} r={tableR} fill={color} stroke={color} strokeWidth={1.5} />
+                  {isCircle ? (
+                    <circle cx={cx} cy={cy} r={tableW / 2} fill={color} stroke={color} strokeWidth={1.5} />
+                  ) : (
+                    <rect
+                      x={cx - tableW / 2} y={cy - tableH / 2}
+                      width={tableW} height={tableH}
+                      rx={isSquare ? 7 : 5}
+                      fill={color} stroke={color} strokeWidth={1.5}
+                    />
                   )}
-                  {shape === 'square' && (
-                    <rect x={cx - tableR} y={cy - tableR} width={tableR * 2} height={tableR * 2} rx={4} fill={color} stroke={color} strokeWidth={1.5} />
-                  )}
-                  {shape === 'rectangle' && (
-                    <rect x={cx - tableW / 2} y={cy - tableH / 2} width={tableW} height={tableH} rx={4} fill={color} stroke={color} strokeWidth={1.5} />
-                  )}
-                  <text x={cx} y={cy + 5} textAnchor="middle" fontSize={11} fontWeight={600} fill="white">
+                  <text x={cx} y={cy + 4} textAnchor="middle" fontSize={11} fontWeight={600} fill="white">
                     {label || 'Mesa'}
                   </text>
                 </svg>

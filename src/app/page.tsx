@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
-import { Stack, Group } from '@mantine/core';
+import { useEffect, useState } from 'react';
+import { Stack, Group, Drawer, ActionIcon, Tooltip } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
+import { IconLayoutSidebarRightExpand } from '@tabler/icons-react';
 import { SeatMapProvider, useSeatMap } from '@/context/SeatMapContext';
 import Topbar from '@/components/Topbar/Topbar';
 import Toolbar from '@/components/Toolbar/Toolbar';
@@ -75,14 +77,59 @@ function KeyboardShortcuts() {
 }
 
 function AppLayout() {
+  const isMobile = useMediaQuery('(max-width: 767px)');
+  const [panelOpen, setPanelOpen] = useState(false);
+  const { state } = useSeatMap();
+
+  // Abrir panel automáticamente cuando se selecciona algo en móvil
+  useEffect(() => {
+    if (isMobile && state.selectedItems.length > 0) {
+      setPanelOpen(true);
+    }
+  }, [state.selectedItems, isMobile]);
+
   return (
-    <Stack gap={0} style={{ height: '100vh', overflow: 'hidden' }}>
+    <Stack gap={0} style={{ height: '100dvh', overflow: 'hidden' }}>
       <Topbar />
       <Group gap={0} style={{ flex: 1, overflow: 'hidden', alignItems: 'stretch' }}>
-        <Toolbar />
+        {!isMobile && <Toolbar />}
         <SeatMapCanvas />
-        <PropertiesPanel />
+        {!isMobile && <PropertiesPanel />}
       </Group>
+
+      {/* Toolbar horizontal fija en la parte inferior en móvil */}
+      {isMobile && <Toolbar horizontal />}
+
+      {/* Panel de propiedades como Drawer en móvil */}
+      {isMobile && (
+        <Drawer
+          opened={panelOpen}
+          onClose={() => setPanelOpen(false)}
+          position="right"
+          size="88%"
+          title="Propiedades"
+          styles={{ body: { padding: 0, display: 'flex', flexDirection: 'column', height: 'calc(100% - 60px)', overflow: 'auto' } }}
+        >
+          <PropertiesPanel inDrawer />
+        </Drawer>
+      )}
+
+      {/* Botón flotante para abrir el panel en móvil */}
+      {isMobile && !panelOpen && (
+        <Tooltip label="Ver propiedades" withArrow position="left">
+          <ActionIcon
+            style={{ position: 'fixed', bottom: 68, right: 12, zIndex: 100, boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}
+            size="lg"
+            radius="xl"
+            color="blue"
+            variant="filled"
+            onClick={() => setPanelOpen(true)}
+          >
+            <IconLayoutSidebarRightExpand size={18} />
+          </ActionIcon>
+        </Tooltip>
+      )}
+
       <KeyboardShortcuts />
     </Stack>
   );
