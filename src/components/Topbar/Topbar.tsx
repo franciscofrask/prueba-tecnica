@@ -76,33 +76,31 @@ export default function Topbar() {
           zIndex: 20,
         }}
         px="md"
-        py={10}
+        py={8}
       >
-        <Group justify="space-between" align="center">
-          {/* Left: Logo + Project name */}
-          <Group gap="sm">
-            <Group gap={6}>
-              <Text fw={800} size="lg" c="blue" style={{ fontFamily: 'Inter, sans-serif', letterSpacing: '-0.03em' }}>
-                {isMobile ? 'Mapa' : 'Mapa de'}
+        {/* Grid de 3 columnas: izquierda | centro | derecha */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 8 }}>
+
+          {/* ── IZQUIERDA: Logo + nombre del mapa ── */}
+          <Group gap="sm" style={{ minWidth: 0 }}>
+            <Group gap={4} style={{ flexShrink: 0 }}>
+              <Text fw={800} size="sm" c="blue" style={{ letterSpacing: '-0.03em', lineHeight: 1 }}>
+                Mapa de
               </Text>
-              <Text fw={800} size="lg" style={{ letterSpacing: '-0.03em' }}>
-                {isMobile ? 'Asientos' : 'Asientos'}
+              <Text fw={800} size="sm" style={{ letterSpacing: '-0.03em', lineHeight: 1 }}>
+                Asientos
               </Text>
             </Group>
-
-            <Box hiddenFrom="sm">
-              {/* espacio vacío en móvil, no se muestra nombre del mapa */}
-            </Box>
-            <Box visibleFrom="sm">
-              <Group gap="sm">
-                <Divider orientation="vertical" />
+            <Box visibleFrom="sm" style={{ minWidth: 0, overflow: 'hidden' }}>
+              <Group gap="xs" style={{ flexWrap: 'nowrap' }}>
+                <Divider orientation="vertical" style={{ height: 16 }} />
                 {editingName ? (
-                  <Group gap={4}>
+                  <Group gap={4} style={{ flexWrap: 'nowrap' }}>
                     <TextInput
                       value={nameDraft}
                       onChange={(e) => setNameDraft(e.currentTarget.value)}
                       size="xs"
-                      w={180}
+                      w={140}
                       autoFocus
                       onKeyDown={(e) => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditingName(false); }}
                     />
@@ -110,12 +108,12 @@ export default function Topbar() {
                     <ActionIcon size="sm" color="gray" variant="light" onClick={() => setEditingName(false)}><IconX size={12} /></ActionIcon>
                   </Group>
                 ) : (
-                  <Group gap={4}>
-                    <Text fw={600} size="sm">{state.seatMap.name}</Text>
-                    <Badge size="xs" variant="light" color="gray">v{state.seatMap.version}</Badge>
+                  <Group gap={4} style={{ flexWrap: 'nowrap', minWidth: 0 }}>
+                    <Text fw={600} size="xs" truncate style={{ maxWidth: 160 }}>{state.seatMap.name}</Text>
+                    <Badge size="xs" variant="light" color="gray" style={{ flexShrink: 0 }}>v{state.seatMap.version}</Badge>
                     <Tooltip label="Renombrar" withArrow>
-                      <ActionIcon size="xs" variant="subtle" color="gray" onClick={startEditName}>
-                        <IconPencil size={12} />
+                      <ActionIcon size="xs" variant="subtle" color="gray" onClick={startEditName} style={{ flexShrink: 0 }}>
+                        <IconPencil size={11} />
                       </ActionIcon>
                     </Tooltip>
                   </Group>
@@ -124,102 +122,98 @@ export default function Topbar() {
             </Box>
           </Group>
 
-          {/* Center: Stats - oculto en móvil */}
-          <Group hiddenFrom="sm" gap={0} />
-          <Group visibleFrom="sm" gap="sm" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
-            <Badge variant="light" color="blue" size="sm">{state.seatMap.rows.length} filas</Badge>
-            <Badge variant="light" color="violet" size="sm">{state.seatMap.areas.length} áreas</Badge>
-            <Badge variant="light" color="green" size="sm">{state.seatMap.tables.length} mesas</Badge>
-            <Badge variant="light" color="orange" size="sm">{totalSeats} asientos</Badge>
-          </Group>
+          {/* ── CENTRO: Stats ── */}
+          <Box visibleFrom="md">
+            <Group gap={6} style={{ flexWrap: 'nowrap' }}>
+              <Badge variant="light" color="blue" size="sm">{state.seatMap.rows.length} filas</Badge>
+              <Badge variant="light" color="violet" size="sm">{state.seatMap.areas.length} áreas</Badge>
+              <Badge variant="light" color="green" size="sm">{state.seatMap.tables.length} mesas</Badge>
+              <Badge variant="light" color="orange" size="sm">{totalSeats} asientos</Badge>
+            </Group>
+          </Box>
 
-          {/* Right: Actions */}
-          <Group gap="xs">
-            {isMobile ? (
-              /* Botones compactos (solo ícono) en móvil */
-              <>
-                <Tooltip label={lastSaved ? `Último guardado: ${lastSaved.toLocaleTimeString()}` : 'Guardar'} withArrow>
-                  <ActionIcon variant={justSaved ? 'filled' : 'light'} color={justSaved ? 'green' : 'teal'}
-                    size="lg" radius="md" onClick={handleSave}>
-                    {justSaved ? <IconCheck size={16} /> : <IconDeviceFloppy size={16} />}
-                  </ActionIcon>
-                </Tooltip>
-                <Tooltip label="Mis mapas guardados" withArrow>
-                  <ActionIcon variant="light" color="blue" size="lg" radius="md" onClick={() => setSavedMapsOpen(true)}>
-                    <IconFolderOpen size={16} />
-                    {savedCount > 0 && <Badge size="xs" color="blue" circle style={{ position: 'absolute', top: -4, right: -4 }}>{savedCount}</Badge>}
-                  </ActionIcon>
-                </Tooltip>
-                <Tooltip label="Nuevo mapa" withArrow>
-                  <ActionIcon variant="subtle" color="gray" size="lg" radius="md" onClick={() => setNewMapOpen(true)}>
-                    <IconRefresh size={16} />
-                  </ActionIcon>
-                </Tooltip>
-                <Tooltip label="Importar JSON" withArrow>
-                  <ActionIcon variant="light" color="blue" size="lg" radius="md" onClick={() => setImportOpen(true)}>
-                    <IconUpload size={16} />
-                  </ActionIcon>
-                </Tooltip>
-                <Tooltip label="Exportar JSON" withArrow>
-                  <ActionIcon variant="filled" color="blue" size="lg" radius="md" onClick={() => setExportOpen(true)}>
-                    <IconDownload size={16} />
-                  </ActionIcon>
-                </Tooltip>
-              </>
-            ) : (
-              /* Botones completos en desktop */
-              <>
-                <Tooltip
-                  label={lastSaved ? `Último guardado: ${lastSaved.toLocaleTimeString()}` : 'Guardar mapa en local storage'}
-                  withArrow
-                >
-                  <Button
-                    variant={justSaved ? 'filled' : 'light'}
-                    color={justSaved ? 'green' : 'teal'}
-                    size="xs"
-                    leftSection={justSaved ? <IconCheck size={14} /> : <IconDeviceFloppy size={14} />}
-                    onClick={handleSave}
-                  >
-                    {justSaved ? '¡Guardado!' : 'Guardar'}
-                  </Button>
-                </Tooltip>
-
-                <Tooltip label="Ver mapas guardados" withArrow>
-                  <Button
-                    variant="light"
-                    color="blue"
-                    size="xs"
-                    leftSection={<IconFolderOpen size={14} />}
-                    onClick={() => setSavedMapsOpen(true)}
-                    rightSection={
-                      savedCount > 0
-                        ? <Badge size="xs" color="blue" circle>{savedCount}</Badge>
-                        : undefined
-                    }
-                  >
-                    Mis mapas
-                  </Button>
-                </Tooltip>
-
-                <Tooltip label="Nuevo mapa (Ctrl+N)" withArrow>
-                  <Button variant="subtle" color="gray" size="xs" leftSection={<IconRefresh size={14} />}
-                    onClick={() => setNewMapOpen(true)}>
-                    Nuevo
-                  </Button>
-                </Tooltip>
-                <Tooltip label="Importar JSON" withArrow>
-                  <Button variant="light" color="blue" size="xs" leftSection={<IconUpload size={14} />}
-                    onClick={() => setImportOpen(true)}>
-                    Importar
-                  </Button>
-                </Tooltip>
-                <Button size="xs" leftSection={<IconDownload size={14} />} onClick={() => setExportOpen(true)}>
-                  Exportar
+          {/* ── DERECHA: Botones de acción ── */}
+          <Group gap={6} justify="flex-end" style={{ flexWrap: 'nowrap' }}>
+            {/* Guardar */}
+            <Tooltip label={lastSaved ? `Último guardado: ${lastSaved.toLocaleTimeString()}` : 'Guardar'} withArrow>
+              {isMobile ? (
+                <ActionIcon variant={justSaved ? 'filled' : 'light'} color={justSaved ? 'green' : 'teal'}
+                  size="md" radius="md" onClick={handleSave}>
+                  {justSaved ? <IconCheck size={14} /> : <IconDeviceFloppy size={14} />}
+                </ActionIcon>
+              ) : (
+                <Button variant={justSaved ? 'filled' : 'light'} color={justSaved ? 'green' : 'teal'}
+                  size="xs" leftSection={justSaved ? <IconCheck size={13} /> : <IconDeviceFloppy size={13} />}
+                  onClick={handleSave}>
+                  <Box visibleFrom="lg">{justSaved ? '¡Guardado!' : 'Guardar'}</Box>
+                  <Box hiddenFrom="lg" style={{ width: 0, overflow: 'hidden' }} />
                 </Button>
-              </>
-            )}
+              )}
+            </Tooltip>
+
+            {/* Mis mapas */}
+            <Tooltip label="Mapas guardados" withArrow>
+              {isMobile ? (
+                <ActionIcon variant="light" color="blue" size="md" radius="md" onClick={() => setSavedMapsOpen(true)} style={{ position: 'relative' }}>
+                  <IconFolderOpen size={14} />
+                  {savedCount > 0 && <Badge size="xs" color="blue" circle style={{ position: 'absolute', top: -4, right: -4, minWidth: 16 }}>{savedCount}</Badge>}
+                </ActionIcon>
+              ) : (
+                <Button variant="light" color="blue" size="xs" leftSection={<IconFolderOpen size={13} />}
+                  onClick={() => setSavedMapsOpen(true)}
+                  rightSection={savedCount > 0 ? <Badge size="xs" color="blue" circle>{savedCount}</Badge> : undefined}>
+                  <Box visibleFrom="lg">Mis mapas</Box>
+                  <Box hiddenFrom="lg" style={{ width: 0, overflow: 'hidden' }} />
+                </Button>
+              )}
+            </Tooltip>
+
+            {/* Nuevo */}
+            <Tooltip label="Nuevo mapa" withArrow>
+              {isMobile ? (
+                <ActionIcon variant="subtle" color="gray" size="md" radius="md" onClick={() => setNewMapOpen(true)}>
+                  <IconRefresh size={14} />
+                </ActionIcon>
+              ) : (
+                <Button variant="subtle" color="gray" size="xs" leftSection={<IconRefresh size={13} />}
+                  onClick={() => setNewMapOpen(true)}>
+                  <Box visibleFrom="lg">Nuevo</Box>
+                  <Box hiddenFrom="lg" style={{ width: 0, overflow: 'hidden' }} />
+                </Button>
+              )}
+            </Tooltip>
+
+            {/* Importar */}
+            <Tooltip label="Importar JSON" withArrow>
+              {isMobile ? (
+                <ActionIcon variant="light" color="blue" size="md" radius="md" onClick={() => setImportOpen(true)}>
+                  <IconUpload size={14} />
+                </ActionIcon>
+              ) : (
+                <Button variant="light" color="blue" size="xs" leftSection={<IconUpload size={13} />}
+                  onClick={() => setImportOpen(true)}>
+                  <Box visibleFrom="lg">Importar</Box>
+                  <Box hiddenFrom="lg" style={{ width: 0, overflow: 'hidden' }} />
+                </Button>
+              )}
+            </Tooltip>
+
+            {/* Exportar */}
+            <Tooltip label="Exportar JSON" withArrow>
+              {isMobile ? (
+                <ActionIcon variant="filled" color="blue" size="md" radius="md" onClick={() => setExportOpen(true)}>
+                  <IconDownload size={14} />
+                </ActionIcon>
+              ) : (
+                <Button size="xs" leftSection={<IconDownload size={13} />} onClick={() => setExportOpen(true)}>
+                  <Box visibleFrom="lg">Exportar</Box>
+                  <Box hiddenFrom="lg" style={{ width: 0, overflow: 'hidden' }} />
+                </Button>
+              )}
+            </Tooltip>
           </Group>
-        </Group>
+
+        </div>
       </Paper>
 
       <ImportModal opened={importOpen} onClose={() => setImportOpen(false)} />

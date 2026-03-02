@@ -26,6 +26,8 @@ export default function SeatMapCanvas() {
   const isPanning = useRef(false);
   const lastPos = useRef({ x: 0, y: 0 });
   const didPan = useRef(false);
+  // Touch: distancia entre dos dedos para pinch-zoom
+  const lastDist = useRef<number | null>(null);
 
   // Marquee selection
   const [selBox, setSelBox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
@@ -291,6 +293,77 @@ export default function SeatMapCanvas() {
   const zoomOut = () => setScale((s) => Math.max(0.2, +(s / 1.2).toFixed(2)));
   const resetView = () => { setScale(1); setStagePos({ x: 0, y: 0 }); };
 
+  // ── Touch handlers (móvil) ──────────────────────────────────────────────
+  const handleTouchStart = (e: KonvaEventObject<TouchEvent>) => {
+    const touches = e.evt.touches;
+    if (touches.length === 1) {
+      // Un dedo: pan
+      isPanning.current = true;
+      didPan.current = false;
+      lastPos.current = { x: touches[0].clientX, y: touches[0].clientY };
+      lastDist.current = null;
+    } else if (touches.length === 2) {
+      // Dos dedos: inicio de pinch
+      isPanning.current = false;
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      lastDist.current = Math.sqrt(dx * dx + dy * dy);
+    }
+  };
+
+  const handleTouchMove = (e: KonvaEventObject<TouchEvent>) => {
+    e.evt.preventDefault();
+    const touches = e.evt.touches;
+
+    if (touches.length === 1 && isPanning.current) {
+      const dx = touches[0].clientX - lastPos.current.x;
+      const dy = touches[0].clientY - lastPos.current.y;
+      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) didPan.current = true;
+      lastPos.current = { x: touches[0].clientX, y: touches[0].clientY };
+      setStagePos((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
+    } else if (touches.length === 2 && lastDist.current !== null) {
+      // Pinch zoom
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      const newDist = Math.sqrt(dx * dx + dy * dy);
+      const ratio = newDist / lastDist.current;
+      lastDist.current = newDist;
+      // Centro del pinch en el canvas
+      const midX = (touches[0].clientX + touches[1].clientX) / 2;
+      const midY = (touches[0].clientY + touches[1].clientY) / 2;
+      const stage = e.target.getStage();
+      if (!stage) return;
+      const rect = stage.container().getBoundingClientRect();
+      const px = midX - rect.left;
+      const py = midY - rect.top;
+      setScale((prev) => {
+        const newScale = Math.max(0.2, Math.min(5, prev * ratio));
+        setStagePos((sp) => ({
+          x: px - (px - sp.x) * (newScale / prev),
+          y: py - (py - sp.y) * (newScale / prev),
+        }));
+        return newScale;
+      });
+    }
+  };
+
+  const handleTouchEnd = (e: KonvaEventObject<TouchEvent>) => {
+    if (e.evt.touches.length === 0) {
+      isPanning.current = false;
+      lastDist.current = null;
+      // Si no hubo movimiento significativo, tratar como tap (deseleccionar)
+      if (!didPan.current && e.target === e.target.getStage()) {
+        dispatch({ type: 'CLEAR_SELECTION' });
+      }
+      didPan.current = false;
+    } else if (e.evt.touches.length === 1) {
+      // Pasamos de 2 dedos a 1: reiniciar pan
+      lastDist.current = null;
+      isPanning.current = true;
+      lastPos.current = { x: e.evt.touches[0].clientX, y: e.evt.touches[0].clientY };
+    }
+  };
+
   const selectedIds = new Set(selectedItems.map((s) => s.id));
   const selectedSeatIds = new Set(
     selectedItems.filter((s) => s.type === 'seat').map((s) => s.id)
@@ -311,7 +384,7 @@ export default function SeatMapCanvas() {
   return (
     <div
       ref={containerRef}
-      style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#f8fafc' }}
+      style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#f8fafc', touchAction: 'none' }}
       className="canvas-dotted-bg"
     >
       <Stage
@@ -326,6 +399,9 @@ export default function SeatMapCanvas() {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onWheel={handleWheel}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         style={{ cursor: state.toolMode === 'pan' ? (isPanning.current ? 'grabbing' : 'grab') : state.toolMode === 'select' ? 'default' : 'crosshair' }}
       >
         {/* Áreas (fondo) */}
