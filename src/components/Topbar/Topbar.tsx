@@ -13,27 +13,36 @@ import {
   Divider,
 } from '@mantine/core';
 import {
-  IconPlus,
   IconUpload,
   IconDownload,
   IconRefresh,
   IconPencil,
   IconCheck,
   IconX,
-  IconBrandGithub,
+  IconDeviceFloppy,
+  IconFolderOpen,
 } from '@tabler/icons-react';
 import { useSeatMap } from '@/context/SeatMapContext';
 import ImportModal from '@/components/Modals/ImportModal';
 import ExportPreviewModal from '@/components/Modals/ExportPreviewModal';
 import NewMapModal from '@/components/Modals/NewMapModal';
+import SavedMapsModal from '@/components/Modals/SavedMapsModal';
 
 export default function Topbar() {
-  const { state, dispatch } = useSeatMap();
+  const { state, dispatch, savedMaps, saveToLocalStorage, lastSaved } = useSeatMap();
   const [importOpen, setImportOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [newMapOpen, setNewMapOpen] = useState(false);
+  const [savedMapsOpen, setSavedMapsOpen] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
+  const [justSaved, setJustSaved] = useState(false);
+
+  const handleSave = () => {
+    saveToLocalStorage();
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 2000);
+  };
 
   const startEditName = () => {
     setNameDraft(state.seatMap.name);
@@ -50,6 +59,8 @@ export default function Topbar() {
   const totalSeats =
     state.seatMap.rows.reduce((acc, r) => acc + r.seats.length, 0) +
     state.seatMap.tables.reduce((acc, t) => acc + t.seats.length, 0);
+
+  const savedCount = Object.keys(savedMaps).length;
 
   return (
     <>
@@ -114,6 +125,38 @@ export default function Topbar() {
 
           {/* Right: Actions */}
           <Group gap="xs">
+            <Tooltip
+              label={lastSaved ? `Último guardado: ${lastSaved.toLocaleTimeString()}` : 'Guardar mapa en local storage'}
+              withArrow
+            >
+              <Button
+                variant={justSaved ? 'filled' : 'light'}
+                color={justSaved ? 'green' : 'teal'}
+                size="xs"
+                leftSection={justSaved ? <IconCheck size={14} /> : <IconDeviceFloppy size={14} />}
+                onClick={handleSave}
+              >
+                {justSaved ? '¡Guardado!' : 'Guardar'}
+              </Button>
+            </Tooltip>
+
+            <Tooltip label="Ver mapas guardados" withArrow>
+              <Button
+                variant="light"
+                color="blue"
+                size="xs"
+                leftSection={<IconFolderOpen size={14} />}
+                onClick={() => setSavedMapsOpen(true)}
+                rightSection={
+                  savedCount > 0
+                    ? <Badge size="xs" color="blue" circle>{savedCount}</Badge>
+                    : undefined
+                }
+              >
+                Mis mapas
+              </Button>
+            </Tooltip>
+
             <Tooltip label="Nuevo mapa (Ctrl+N)" withArrow>
               <Button
                 variant="subtle"
@@ -150,6 +193,7 @@ export default function Topbar() {
       <ImportModal opened={importOpen} onClose={() => setImportOpen(false)} />
       <ExportPreviewModal opened={exportOpen} onClose={() => setExportOpen(false)} />
       <NewMapModal opened={newMapOpen} onClose={() => setNewMapOpen(false)} />
+      <SavedMapsModal opened={savedMapsOpen} onClose={() => setSavedMapsOpen(false)} />
     </>
   );
 }

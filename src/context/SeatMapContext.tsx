@@ -5,6 +5,7 @@ import React, {
   useContext,
   useReducer,
   useCallback,
+  useEffect,
   ReactNode,
 } from 'react';
 import { v4 as uuidv4 } from 'uuid';
@@ -409,6 +410,29 @@ function reducer(state: State, action: Action): State {
   }
 }
 
+// ─── localStorage ────────────────────────────────────────────────────────────
+
+const LS_LIBRARY_KEY = 'seatmap_library';
+
+export interface SavedMapEntry {
+  map: SeatMap;
+  savedAt: string;
+}
+
+function readLibrary(): Record<string, SavedMapEntry> {
+  try {
+    const raw = localStorage.getItem(LS_LIBRARY_KEY);
+    if (raw) return JSON.parse(raw) as Record<string, SavedMapEntry>;
+  } catch { /* ignorar */ }
+  return {};
+}
+
+function writeLibrary(lib: Record<string, SavedMapEntry>) {
+  try {
+    localStorage.setItem(LS_LIBRARY_KEY, JSON.stringify(lib));
+  } catch { /* ignorar */ }
+}
+
 // ─── Contexto ─────────────────────────────────────────────────────────────────
 
 interface SeatMapContextValue {
@@ -416,18 +440,60 @@ interface SeatMapContextValue {
   dispatch: React.Dispatch<Action>;
   canUndo: boolean;
   canRedo: boolean;
+  savedMaps: Record<string, SavedMapEntry>;
+  saveToLocalStorage: () => void;
+  loadSavedMap: (id: string) => void;
+  deleteSavedMap: (id: string) => void;
+  lastSaved: Date | null;
 }
 
 const SeatMapContext = createContext<SeatMapContextValue | null>(null);
 
 export function SeatMapProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
+  const [savedMaps, setSavedMaps] = React.useState<Record<string, SavedMapEntry>>({});
+  const [lastSaved, setLastSaved] = React.useState<Date | null>(null);
+
+  // Cargar biblioteca tras hidratación (solo cliente)
+  useEffect(() => {
+    const lib = readLibrary();
+    setSavedMaps(lib);
+  }, []);
+
+  const saveToLocalStorage = useCallback(() => {
+    const lib = readLibrary();
+    const entry: SavedMapEntry = { map: state.seatMap, savedAt: new Date().toISOString() };
+    const updated = { ...lib, [state.seatMap.id]: entry };
+    writeLibrary(updated);
+    setSavedMaps(updated);
+    setLastSaved(new Date());
+  }, [state.seatMap]);
+
+  const loadSavedMap = useCallback((id: string) => {
+    const lib = readLibrary();
+    if (lib[id]) {
+      dispatch({ type: 'IMPORT_MAP', payload: lib[id].map });
+      setLastSaved(new Date(lib[id].savedAt));
+    }
+  }, []);
+
+  const deleteSavedMap = useCallback((id: string) => {
+    const lib = readLibrary();
+    const { [id]: _, ...rest } = lib;
+    writeLibrary(rest);
+    setSavedMaps(rest);
+  }, []);
 
   const value: SeatMapContextValue = {
     state,
     dispatch,
     canUndo: state.past.length > 0,
     canRedo: state.future.length > 0,
+    savedMaps,
+    saveToLocalStorage,
+    loadSavedMap,
+    deleteSavedMap,
+    lastSaved,
   };
 
   return <SeatMapContext.Provider value={value}>{children}</SeatMapContext.Provider>;
